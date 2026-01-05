@@ -27,6 +27,7 @@ This report documents the method for obtaining the total organic carbon content 
 * [The fieldtrip of Bourgneuf Bay 2025](https://sigoiry.github.io/Fieldtrip_Rewrite_Sept2025/) by Simon Oiry
 * [Exploring the relationship between seagrass reflectance and biomass](https://leechengfa.github.io/Seagrass_reflectance_biomass_2025.github.io/) by C. Benjamin Lee
 
+All analyses were performed in R version 4.5.2 [@Rversion].
 All work belong to the [REWRITE project](https://rewriteproject.eu/).
 
 # Method
@@ -132,32 +133,30 @@ knitr::kable(table.amtFieldBB,
 ```
 
 
-## Sample collection
+## Field survey and sample collection
 
-Field data collection
+### _In situ_ field survey
 
-SPC
+For every station, seagrass cover was visually assessed with the aid of a 50 cm by 50 cm quadrat. The location of each station was measured using an Emlid Reach RS2+ GNSS receiver with RTK corrections from the Teria Network.
 
-Hyperspectral measurement
-
-
-Coring
+For select stations, _in situ_ spectroradiometric measurements were measured using an [ASD FieldSpec HandHeld 2](https://www.malvernpanalytical.com/en/support/product-support/asd-range/fieldspec-range/handheld-2-hand-held-vnir-spectroradiometer). The ASD was calibrated using a white reference panel before each measurement to account for possible ambient light changes and instrumental noise. 20 readings were measured per station and averaged to obtain an averaged spectra. The spectra were then smoothed with a moving window of size 11 using the `rollapply()` function from the `zoo` package [@zoo2005]. While this means that the first and last five wavelengths would be smoothed with a partial moving window of less than 11 values, given the spectroradiometer's full wavelength range of 325 nm to 1075 nm and the final working range of 400 nm to 900 nm, these affected wavelengths will be filtered out and thus irrelevant here.
 
 
-DGPS
+### Sample collection
 
-
+Sediment cores were collected using a 15 cm diameter length PVC tube. The coring was sufficiently deep, such that all belowground biomass were collected.
 
 The collected samples were rinsed and sieved using a 40 cm diameter stainless steel sieve with a mesh size of 1 mm to remove as much substrate as possible. The samples were then transported to back to the laboratory and preserved in a fridge.
 
 
 ### Sorting
 
+The samples were sorted into leaf and root matter by separating the plant at the [internode](https://link.springer.com/article/10.1007/s10750-012-1153-6/figures/7). 
 
 
 ### Drying
 
-The samples were dried in an oven at 60 &deg;C. [ask Alex]
+The samples were dried in an oven at 60 &deg;C for 48 hours. After desiccation, the samples were weighed using a bench scale to obtain their dry weight. 
 
 
 ### Grinding
@@ -219,9 +218,31 @@ The samples at Ria de Aveiro were selected based on the following factors:
 * Clustering in the 2D plot space between the collected leaf and root biomass
 * Deviation from a linear relationship between the seagrass cover and the leaf biomass
 * Availability of _in situ_ hyperspectral measurements (n = `r sum(csv.biomass.AV$spectra)`)
-* Elimination of stations which have no seagrass biomass (n = `r nrow(filter(csv.biomass.AV, seagrassA + seagrassB == 0))`)
+* Elimination of stations which have no seagrass biomass (n = `r nrow(filter(csv.biomass.AV, seagrassA + seagrassB == 0 | is.na(seagrassA) & is.na(seagrassB)))`)
 
-This means that `r 30 - sum(csv.biomass.AV$spectra)` samples need to be selected from the remaining `r sum(table.amtFieldAV['Actual no. of field stations']) - sum(csv.biomass.AV$spectra) - nrow(filter(csv.biomass.AV, seagrassA + seagrassB == 0))` samples which have neither hyperspectral measurements nor have no seagrass biomass.
+Of the stations with hyperspectral measurements, `r csv.biomass.AV %>% filter(seagrassA < 370 | seagrassB < 370) %>% select(spectra) %>% sum()` have too little samples for the carbon measurement (more in section \@ref(toc-measurement)). They are:
+
+```{r amountSmallFieldSamplesAV}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+table.amtSmallFieldSamples.AV <- csv.biomass.AV %>% 
+  filter(seagrassA < 370 | seagrassB < 370) %>%
+  filter(spectra == TRUE) %>%
+  arrange(name) %>%
+  select(name, seagrassA, seagrassB)
+
+knitr::kable(table.amtSmallFieldSamples.AV %>% rename(c(Station = name, "Collected leaf biomass (mg)" = seagrassA, "Collected root biomass (mg)" = seagrassB)), 
+             format = "pipe",
+             align = 'c',
+             caption = 'Samples collected from Ria de Aveiro that have insufficient biomass for the carbon measurement. These samples have hyperspectral measurements.')
+```
+
+Table \@ref(tab:amountSmallFieldSamplesAV) shows that `r nrow(filter(table.amtSmallFieldSamples.AV, seagrassA + seagrassB == 0))` stations have no samples at all and `r nrow(filter(table.amtSmallFieldSamples.AV, seagrassA + seagrassB != 0 & seagrassA == 0 | seagrassA + seagrassB != 0 & seagrassB == 0))` station have no leaf or root samples for sampling. Based on the stated criteria, these stations were removed for the list of viable stations for carbon sampling. For the remaining `r nrow(table.amtSmallFieldSamples.AV) - nrow(filter(table.amtSmallFieldSamples.AV, seagrassA + seagrassB == 0)) - nrow(filter(table.amtSmallFieldSamples.AV, seagrassA + seagrassB != 0 & seagrassA == 0 | seagrassA + seagrassB != 0 & seagrassB == 0))` stations, NR 43 could still be sampled as usual, with its root biomass sampling having close to the recommended 300 mg for inorganic carbon content sampling. Meanwhile, RG 22 and RG 46 are both in the rewilded site and have very similar spectra. As such, they could be pooled together as one for the carbon sampling. 
+
+Altogther, this means that `r 30 - (sum(csv.biomass.AV$spectra) - nrow(filter(table.amtSmallFieldSamples.AV, seagrassA == 0 | seagrassB == 0)) - 1)` samples need to be selected from the remaining `r sum(table.amtFieldAV['Actual no. of field stations']) - sum(csv.biomass.AV$spectra) - nrow(filter(csv.biomass.AV, seagrassA + seagrassB == 0))` samples which have neither hyperspectral measurements nor have no seagrass biomass.
 
 
 ```{r selectionAV}
@@ -229,7 +250,7 @@ This means that `r 30 - sum(csv.biomass.AV$spectra)` samples need to be selected
 #| error: false
 #| message: false
 #| warning: false
-#| fig.cap: "Data filtering for the Ria de Aveiro samples. The light blue rectangle denotes that the station has insufficient biomass for the carbon measurement, based on the requirements outlined in section \\@ref(toc-measurement). (A) establishes the general relationship between leaf and root biomass. (B) scores the non-zero stations based on the established criteria. (C) demonstrates that the filtered data's relationship between leaf and root biomass is somewhat preserved with its similar slope factor to A (represented by the blue dotted line)."
+#| fig.cap: Data filtering for the Ria de Aveiro samples. The light blue rectangle denotes that the station has insufficient biomass for the carbon measurement, based on the requirements outlined in section \@ref(toc-measurement). (A) establishes the general relationship between leaf and root biomass. (B) scores the non-zero stations based on the established criteria. (C) demonstrates that the filtered data's relationship between leaf and root biomass is somewhat preserved with its similar slope factor to A (represented by the blue dotted line). The black dotted line represents the overall linear relationship between leaf and root biomass across all three locations.
 
 ## establishing a local linear relationship between leaf (AGB) and root (BGB)
 plt.leaf_root <- ggplot(csv.biomass.AV, aes(x = seagrassB, y = seagrassA)) +
@@ -260,25 +281,30 @@ csv.biomass.AV$seagrass.cover.predicted <- 0.12*csv.biomass.AV$seagrassA + 2.4
 ## calculating data points spread over the 2D space   
 csv.biomass.AV$sectoring <- paste0(
   case_when(
-    csv.biomass.AV$seagrassA < 1000 ~ 'a',
-    csv.biomass.AV$seagrassA > 1000 & csv.biomass.AV$seagrassA < 2000 ~ 'b',
-    csv.biomass.AV$seagrassA > 2000 & csv.biomass.AV$seagrassA < 3000 ~ 'c',
-    csv.biomass.AV$seagrassA > 3000 & csv.biomass.AV$seagrassA < 4000 ~ 'd',
-    csv.biomass.AV$seagrassA > 4000 ~ 'e'
+    csv.biomass.AV$seagrassA < 500 ~ 'a',
+    csv.biomass.AV$seagrassA < 1000 ~ 'b',
+    csv.biomass.AV$seagrassA < 2000 ~ 'c',
+    csv.biomass.AV$seagrassA < 3000 ~ 'd',
+    csv.biomass.AV$seagrassA < 4000 ~ 'e',
+    csv.biomass.AV$seagrassA >= 4000 ~ 'f'
   ),
   case_when(
-    csv.biomass.AV$seagrassB < 1000 ~ 'a',
-    csv.biomass.AV$seagrassB > 1000 & csv.biomass.AV$seagrassB < 2000 ~ 'b',
-    csv.biomass.AV$seagrassB > 2000 & csv.biomass.AV$seagrassB < 3000 ~ 'c',
-    csv.biomass.AV$seagrassB > 3000 & csv.biomass.AV$seagrassB < 4000 ~ 'd',
-    csv.biomass.AV$seagrassB > 4000 ~ 'e'
+    csv.biomass.AV$seagrassA < 500 ~ 'a',
+    csv.biomass.AV$seagrassB < 1000 ~ 'b',
+    csv.biomass.AV$seagrassB < 2000 ~ 'c',
+    csv.biomass.AV$seagrassB < 3000 ~ 'd',
+    csv.biomass.AV$seagrassB < 4000 ~ 'e',
+    csv.biomass.AV$seagrassB >= 4000 ~ 'f'
   )
 )
 
+## remove the zero values to reduce the penalty of the first sector (too many zero values)
 table.sector.AV <- csv.biomass.AV %>% 
+  filter(seagrassA + seagrassB > 0) %>%
   select(sectoring) %>%
   table()
 table.sector.spectra.AV <- csv.biomass.AV %>%
+  filter(seagrassA + seagrassB > 0) %>%
   filter(spectra == TRUE) %>%
   select(sectoring) %>%
   table()
@@ -306,7 +332,8 @@ selected <- csv.biomass.AV %>%
   filter(is.na(csv.biomass.AV$`spectral camera`)) %>%  
   arrange(score.initial) %>%
   pull(name) %>%
-  "["(1:14)
+  "["(1:16) %>%
+  c('RG 9')
 
 ## checking if the linear relationship between AGB and BGB is substantially changed after the data thinning
 ## representation is similar
@@ -334,18 +361,26 @@ girafe(ggobj = plt.leaf_root + plt.score.initial + plt.score.selected + plot_ann
 ## final selection list
 final.list.AV <- csv.biomass.AV %>%
   filter(!is.na(csv.biomass.AV$`spectral camera`)) %>%  
+  filter(seagrassA > 0 & seagrassB > 0) %>%
   pull(name) %>%
   c(selected) %>%
-  c('NG 29', 'NR 44', 'RG 9') %>% ## these stations have too little biomass and have to be pooled (see section on TOC measurement for more info)
   unique() %>%
   sort()
 ```
 
-Based on the criteria, the final list of samples from Ria de Aveiro for carbon measurement are: 
+Based on the criteria and user-defined weightage of each criterion, the final list of samples from Ria de Aveiro for carbon measurement are: 
 
-* `r paste(final.list.AV, collapse = ', ')`.
+* `r paste(final.list.AV %>% grep('NG', ., value = TRUE), collapse = ', ')`
+* `r paste(final.list.AV %>% grep('NR', ., value = TRUE), collapse = ', ')`
+* `r paste(final.list.AV %>% grep('RG', ., value = TRUE), collapse = ', ')`
+* `r paste(final.list.AV %>% grep('RR', ., value = TRUE), collapse = ', ')`
 
-Three stations (NG 29, NR 44, and RG 9) have too little biomass samples (Figure \@ref(fig:selectionAV)), and thus will be combined to ensure sufficient biomass for the carbon measurement. In addition, RG 22 and RR 46 have less than 370 mg of dry weight for either its leaf or root biomass. However, these points have a minimum of 140 mg each, which might suffice (more in section \@ref(toc-measurement)).
+Of the selected, RG 17 and RG 24 have only 250 mg and 338 mg of root samples, respectively. As with NR 43, RG 24 has almost enough root sample and can be performed as it is. Meanwhile, RG 17 will be pooled with its neighbour RG 9 to attain the recommended sample weight.
+
+The pooled sample set(s) are:
+
+* RG 22 and RG 46
+* RG 9 and RG 17
 
 
 ### Bourgneuf Bay
@@ -356,24 +391,50 @@ Three stations (NG 29, NR 44, and RG 9) have too little biomass samples (Figure 
 #| message: false
 #| warning: false
 
-csv.biomass.BB <- csv.biomass.BB
+# csv.biomass.BB <- csv.biomass.BB
   csv.biomass.BB$spectra <- grepl('H', csv.biomass.BB$Station)
 ```
 
-The data was selected using the same criteria from section \@ref(dataselectionAV) for the carbon measurement. As before:
+The data was selected by adapting the same criteria from section \@ref(dataselectionAV) for the carbon measurement. As before:
 
 * Availability of _in situ_ hyperspectral measurements (n = `r sum(csv.biomass.BB$spectra)`)
-* Elimination of stations which have no seagrass biomass (n = `r nrow(filter(csv.biomass.BB, A + B == 0))`)
-* Owing to the lack of seagrass cover data, this criterion was dropped
+* Elimination of stations which have no seagrass biomass (n = `r nrow(filter(csv.biomass.BB, A + B == 0 | is.na(A) & is.na(B)))`)
+* Elimination of a station which root sample was lost during the sorting process (n = `r nrow(filter(csv.biomass.BB, A > 0 & is.na(B)))`)
 
-Normally, this would means that `r 30 - sum(csv.biomass.BB$spectra)` samples need to be selected from the remaining `r sum(table.amtFieldBB['Actual no. of field stations']) - sum(csv.biomass.BB$spectra) - nrow(filter(csv.biomass.BB, A + B == 0)) - nrow(filter(csv.biomass.BB, is.na(B)))` samples which have neither hyperspectral measurements nor have no seagrass biomass. Furthermore, there is a loss of `r nrow(filter(csv.biomass.BB, !is.na(A) & is.na(B)))` more sample(s), as its root biomass was unfortunately lost during the sorting and drying process. However, `r csv.biomass.BB %>% filter(spectra == TRUE) %>% filter(A < 370 | B < 370) %>% nrow()` samples have less than 370 mg for either the leaf or the root biomass or both. Of these, `r csv.biomass.BB %>% filter(spectra == TRUE) %>% filter(A < 140 | B < 140) %>% nrow()` sample(s) have less than 140 mg. This means that these samples might be pooled, so more samples are needed for the carbon measurement.
+Of the stations with hyperspectral measurements, `r csv.biomass.BB %>% filter(A < 370 | B < 370) %>% select(spectra) %>% sum()` stations have too little samples for the carbon measurement (more in section \@ref(toc-measurement)). They are:
+
+```{r amountSmallFieldSamplesBB}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+table.amtSmallFieldSamples.BB <- csv.biomass.BB %>% 
+  filter(A < 370 | B < 370) %>%
+  filter(spectra == TRUE) %>%
+  arrange(Station) %>%
+  select(Station, A, B)
+
+knitr::kable(table.amtSmallFieldSamples.BB %>% rename(c("Collected leaf biomass (mg)" = A, "Collected root biomass (mg)" = B)), 
+             format = "pipe",
+             align = 'c',
+             caption = 'Samples collected from Bourgneuf Bay that have insufficient biomass for the carbon measurement. These samples have hyperspectral measurements.')
+```
+
+
+Normally, this would means that `r 30 - sum(csv.biomass.BB$spectra)` samples need to be selected from the remaining `r sum(table.amtFieldBB['Actual no. of field stations']) - sum(csv.biomass.BB$spectra) - nrow(filter(csv.biomass.BB, A + B == 0)) - nrow(filter(csv.biomass.BB, is.na(B)))` samples which have neither hyperspectral measurements nor have no seagrass biomass. However, table \@ref(tab:amountSmallFieldSamplesBB) shows that `r csv.biomass.BB %>% filter(spectra == TRUE) %>% filter(A < 370 | B < 370) %>% nrow()` samples have less than 370 mg for either the leaf or the root biomass or both. Of these samples, only H_17 could be measured as usual, since its weight is close to the recommended 370 mg. Arguably, the same risk could be taken for H_23. Although H_21, H_22, and H_23 are neighbouring points, they have very different spectra.
+
+Nonetheless, it would still be very valuable to measure the carbon content in these samples with low seagrass cover. As such, these 5 stations will be pooled together and their carbon content will be assumed to be homogeneous and averaged across these stations.
+
+Therefore, `r 30 - (sum(csv.biomass.BB$spectra) - 4)` more stations can be measured for carbon content.
+
 
 ```{r selectionBB}
 #| echo: false
 #| error: false
 #| message: false
 #| warning: false
-#| fig.cap: Data filtering for the Bourgneuf Bay samples. The light blue rectangle denotes that the station has insufficient biomass for the carbon measurement, based on the requirements outlined in section \@ref(toc-measurement). (A) establishes the general relationship between leaf and root biomass. (B) scores the non-zero stations based on the established criteria. (C) shows the change in the relationship between leaf and root biomass between the original data (represented by the blue dotted line) and the filtered data.
+#| fig.cap: Data filtering for the Bourgneuf Bay samples. The light blue rectangle denotes that the station has insufficient biomass for the carbon measurement, based on the requirements outlined in section \@ref(toc-measurement). (A) establishes the general relationship between leaf and root biomass. (B) scores the non-zero stations based on the established criteria. (C) shows the change in the relationship between leaf and root biomass between the original data (represented by the blue dotted line) and the filtered data. The black dotted line represents the overall linear relationship between leaf and root biomass across all three locations.
 
 ## establishing a local linear relationship between leaf (AGB) and root (BGB)
 plt.leaf_root <- ggplot(csv.biomass.BB, aes(x = B, y = A)) +
@@ -443,7 +504,7 @@ selected <- csv.biomass.BB %>%
   filter(spectra == FALSE) %>%  
   arrange(score.initial) %>%
   pull(Station) %>%
-  "["(1:5)
+  "["(1:4)
 
 ## checking if the linear relationship between AGB and BGB is substantially changed after the data thinning
 ## representation is similar
@@ -477,11 +538,14 @@ final.list.BB <- csv.biomass.BB %>%
   sort()
 ```
 
-Based on the criteria, the final list of samples from Bourgneuf Bay for carbon measurement are: 
+Based on the criteria and user-defined weightage of each criterion, the final list of samples from Bourgneuf Bay for carbon measurement are: 
 
-* `r paste(final.list.BB, collapse = ', ')`.
+* `r paste(final.list.BB %>% grep('H', ., value = TRUE), collapse = ', ')`
+* `r paste(final.list.BB %>% grep('L', ., value = TRUE), collapse = ', ')`
 
-<span style="color:red">Need to comment more about the samples with less than 370 mg for either AGB or BGB. </span>
+The pooled sample set(s) are:
+
+* H_04, H_15, H_21, H_22, and H_26
 
 
 ## TOC measurement
