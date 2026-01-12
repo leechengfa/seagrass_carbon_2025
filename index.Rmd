@@ -60,8 +60,8 @@ csv.biomass.CB <- read_xlsx('data/biomass/Cadiz_Biomass_C_cores.xlsx') %>%
          name = paste(type, Sample, sep = '_')
          )
 
-csv.biomass.CB$Leaves <- csv.biomass.CB$Leaves * 1000  # conversion to mg
-csv.biomass.CB$Roots <- csv.biomass.CB$Roots * 1000  # conversion to mg
+csv.biomass.CB$Leaves <- csv.biomass.CB$Leaves * 100^2 / (pi*(15/2)^2)  # conversion to g/m2
+csv.biomass.CB$Roots <- csv.biomass.CB$Roots * 100^2 / (pi*(15/2)^2)  # conversion to g/m2
   
 table.amtFieldCB <- data.frame(
     list(
@@ -100,6 +100,13 @@ knitr::kable(table.amtFieldCB,
 #| warning: false
 
 csv.biomass.AV <- read_xlsx('data/biomass/Aveiro_grid_info_final.xlsx', sheet = 'data')
+
+convert_mg_to_gm2 <- function(num) {
+  num / 1000 * (100^2 / (pi*(15/2)^2))
+}
+
+csv.biomass.AV$seagrassA <- convert_mg_to_gm2(csv.biomass.AV$seagrassA) # conversion to g/m2
+csv.biomass.AV$seagrassB <- convert_mg_to_gm2(csv.biomass.AV$seagrassB)  # conversion to g/m2
 
 Av.RG <- csv.biomass.AV$site == 'rewilded' & csv.biomass.AV$type == 'grid'
 Av.RR <- csv.biomass.AV$site == 'rewilded' & csv.biomass.AV$type == 'random'
@@ -150,8 +157,9 @@ knitr::kable(table.amtFieldAV,
 #| warning: false
 
 csv.biomass.BB <- read_xlsx('data/biomass/BourgneufBay_DryWeight_Cores.xlsx', sheet = 'Feuil1')
-  csv.biomass.BB$A <- csv.biomass.BB$A * 1000  # conversion to mg
-  csv.biomass.BB$B <- csv.biomass.BB$B * 1000  # conversion to mg
+
+csv.biomass.BB$A <- csv.biomass.BB$A * 100^2 / (pi*(15/2)^2)  # conversion to g/m2
+csv.biomass.BB$B <- csv.biomass.BB$B * 100^2 / (pi*(15/2)^2)  # conversion to g/m2
 
 table.amtFieldBB <- data.frame(
     list(
@@ -259,6 +267,9 @@ knitr::kable(table.amtFieldSamples,
 ## all bare stations should have zero leaf and root weight. Any leaf weight without root weight are drift leaves and thus not considered
 csv.biomass.CB$Leaves[csv.biomass.CB$Sample > 17] <- 0
 csv.biomass.CB$Roots[csv.biomass.CB$Sample > 17] <- 0
+
+## 370 mg as the recommended minimum for TC and IC measurements; conversion to the same scale
+recommended_minimum <- convert_mg_to_gm2(370)
 ```
 
 While all the samples from Cadiz Bay will be used in the carbon content measurement, it would still be interesting to assess the matchup between its leaf and root biomass. Furthermore, none of the relevant samples at Cadiz Bay were too little for the carbon content measurement (Table \@ref(tab:amountSmallFieldSamplesCB)).
@@ -270,11 +281,11 @@ While all the samples from Cadiz Bay will be used in the carbon content measurem
 #| warning: false
 
 table.amtSmallFieldSamples.CB <- csv.biomass.CB %>% 
-  filter(Leaves < 370 | Roots < 370) %>%
+  filter(Leaves < recommended_minimum | Roots < recommended_minimum) %>%
   arrange(name) %>%
   select(name, Leaves, Roots)
 
-knitr::kable(table.amtSmallFieldSamples.CB %>% rename(c(Station = name, "Collected leaf biomass (mg)" = Leaves, "Collected root biomass (mg)" = Roots)), 
+knitr::kable(table.amtSmallFieldSamples.CB %>% rename(c(Station = name, "Collected leaf biomass (g/m^2)" = Leaves, "Collected root biomass (g/m^2)" = Roots)), 
              format = "pipe",
              align = 'c',
              caption = 'Samples collected from Cadiz Bay that have insufficient biomass for the carbon measurement. Bare stations were expected to have no biomass. None of the non-bare station had insufficient biomass.')
@@ -293,44 +304,77 @@ Figure \@ref(fig:selectionCB) shows the relationship between the leaf and root b
 csv.biomass.CB <- csv.biomass.CB %>%
   filter(name != 'High_01', name != 'High_02', name != 'High_03')
 
+xmax <- 850
+ymax <- 200
+
+.xlab <- expression('Leaf biomass (g/m^2)')
+.ylab <- expression('Root biomass (g/m^2)')
+
+leaf_root_slope <- 0.63
+leaf_root_intercept <- 8.5
+
 ## establishing a local linear relationship between leaf (AGB) and root (BGB)
-plt.leaf_root <- ggplot(csv.biomass.CB, aes(x = Roots, y = Leaves)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.leaf_root <- ggplot(csv.biomass.CB, aes(x = Leaves, y = Roots)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", name), data_id = name, colour = type)) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
-  xlim(c(0,3200)) + ylim(c(0, 14000)) +
+  xlab(.xlab) + ylab(.ylab) +
+  xlim(c(0,xmax)) + ylim(c(0, ymax)) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('All stations')
 
-plt.leaf_root_non_high <- ggplot(csv.biomass.CB %>% filter(type != "High"), aes(x = Roots, y = Leaves)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.leaf_root_non_high <- ggplot(csv.biomass.CB %>% filter(type != "High"), aes(x = Leaves, y = Roots)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", name), data_id = name, colour = type), show.legend = FALSE) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
-  xlim(c(0,3200)) + ylim(c(0, 14000)) +
+  xlab(.xlab) + ylab(.ylab) +
+  xlim(c(0,xmax)) + ylim(c(0, ymax)) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('Bare and Intermediate stations')
 
-plt.leaf_root_high <- ggplot(csv.biomass.CB %>% filter(type == "High"), aes(x = Roots, y = Leaves)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.leaf_root_high <- ggplot(csv.biomass.CB %>% filter(type == "High"), aes(x = Leaves, y = Roots)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", name), data_id = name, colour = type), show.legend = FALSE) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
-  xlim(c(0,3200)) + ylim(c(0, 14000)) +
+  xlab(.xlab) + ylab(.ylab) +
+  xlim(c(0,xmax)) + ylim(c(0, ymax)) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('High stations')
 
-girafe(ggobj = plt.leaf_root + plt.leaf_root_non_high + plt.leaf_root_high + plot_annotation(tag_levels = 'A') + plot_layout(guides = 'collect', axis_titles = 'collect'),
+## find model fit
+log_model.CB <- lm(Roots ~ log(Leaves + 1e-9), data = csv.biomass.CB)
+log_model.CB.summary <- summary(log_model.CB)
+stat_regline.CB <- substitute(italic(y) == A*log*italic(x) + B * "," * ~italic(R)^2*adj ~ "=" ~ R2, list(A = format(unname(log_model.CB$coefficients[2]), digits = 2), B = format(unname(log_model.CB$coefficients[1]), digits = 2), R2 = format(log_model.CB.summary$adj.r.squared, digits = 3), x = "x", y = "y", adj = "[adj]")) %>%
+  as.expression() %>%
+  as.character()
+
+plt.leaf_root_transformed <- ggplot(csv.biomass.CB, aes(x = Leaves, y = Roots)) +
+  # geom_rect(aes(xmin = 0, xmax = log(recommended_minimum), ymin = 0, ymax = log(recommended_minimum)), alpha = 0.5, fill = 'lightblue') +
+  # geom_smooth(method = 'lm') + 
+  stat_smooth(formula = y ~ log(x + 1e-9)) + 
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
+  geom_point_interactive(aes(tooltip = paste0("Station: ", name), data_id = name, colour = type), show.legend = FALSE) +
+  xlab(.xlab) + ylab(.ylab) +
+  # xlab(bquote('Log-transformed leaf biomass (g/m^2)')) + ylab(bquote('Log-transformed root biomass (g/m^2)')) +
+  xlim(c(0,xmax)) + ylim(c(0, ymax)) +
+  # stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
+  annotate("text", x = 1, y = ymax - 3, hjust = 0, label = stat_regline.CB, parse = TRUE) +
+  ggtitle('All stations (transformed)')
+
+girafe(ggobj = plt.leaf_root + plt.leaf_root_transformed + plt.leaf_root_non_high + plt.leaf_root_high + 
+               plot_annotation(tag_levels = 'A') + 
+               plot_layout(design = 'AB
+                                     CD', 
+                           guides = 'collect', axis_titles = 'collect'),
          options = list(
            opts_hover(css = "stroke-width:2.5px"),
            opts_hover_inv(css = "opacity:0.25"),
            opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px")
          ),
-         height_svg = 7, width_svg = 12
+         height_svg = 9, width_svg = 16
   )
 ```
 
@@ -339,7 +383,7 @@ girafe(ggobj = plt.leaf_root + plt.leaf_root_non_high + plt.leaf_root_high + plo
 
 ```{r selectionAVpreprocess}
 #| echo: false
-#| error: false
+#| error: false 
 #| message: false
 #| warning: false
 
@@ -369,12 +413,12 @@ Of the stations with hyperspectral measurements, `r csv.biomass.AV %>% filter(se
 #| warning: false
 
 table.amtSmallFieldSamples.AV <- csv.biomass.AV %>% 
-  filter(seagrassA < 370 | seagrassB < 370) %>%
+  filter(seagrassA < recommended_minimum | seagrassB < recommended_minimum) %>%
   filter(spectra == TRUE) %>%
   arrange(name) %>%
   select(name, seagrassA, seagrassB)
 
-knitr::kable(table.amtSmallFieldSamples.AV %>% rename(c(Station = name, "Collected leaf biomass (mg)" = seagrassA, "Collected root biomass (mg)" = seagrassB)), 
+knitr::kable(table.amtSmallFieldSamples.AV %>% rename(c(Station = name, "Collected leaf biomass (g/m^2)" = seagrassA, "Collected root biomass (g/m^2)" = seagrassB)), 
              format = "pipe",
              align = 'c',
              caption = 'Samples collected from Ria de Aveiro that have insufficient biomass for the carbon measurement. These samples have hyperspectral measurements.')
@@ -391,49 +435,54 @@ Altogther, this means that `r 30 - (sum(csv.biomass.AV$spectra) - nrow(filter(ta
 #| warning: false
 #| fig.cap: Data filtering for the Ria de Aveiro samples. The light blue rectangle denotes that the station has insufficient biomass for the carbon measurement, based on the requirements outlined in section \@ref(toc-measurement). (A) establishes the general relationship between leaf and root biomass. (B) scores the non-zero stations based on the established criteria. (C) demonstrates that the filtered data's relationship between leaf and root biomass is somewhat preserved with its similar slope factor to A (represented by the blue dotted line). The black dotted line represents the overall linear relationship between leaf and root biomass across all three locations.
 
+xmax <- 250
+ymax <- 200
+
 ## establishing a local linear relationship between leaf (AGB) and root (BGB)
-plt.leaf_root <- ggplot(csv.biomass.AV, aes(x = seagrassB, y = seagrassA)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.leaf_root <- ggplot(csv.biomass.AV, aes(x = seagrassA, y = seagrassB)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", name), data_id = name, colour = site, shape = spectra)) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
+  xlab(.xlab) + ylab(.ylab) +
+  xlim(c(0,xmax)) + ylim(c(0,ymax)) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('All stations')
 
 ## calculating variation from linear relationship
-csv.biomass.AV$predicted_AGB <- 1.3*csv.biomass.AV$seagrassB+220
-csv.biomass.AV$residual <- abs(csv.biomass.AV$predicted_AGB-csv.biomass.AV$seagrassA)
-csv.biomass.AV$residual_perc <- csv.biomass.AV$residual/mean(csv.biomass.AV$predicted_AGB, na.rm = TRUE)*100
+csv.biomass.AV$predicted_BGB <- 0.89*csv.biomass.AV$seagrassA+2.5
+csv.biomass.AV$residual <- abs(csv.biomass.AV$predicted_BGB-csv.biomass.AV$seagrassB)
+csv.biomass.AV$residual_perc <- csv.biomass.AV$residual/mean(csv.biomass.AV$predicted_BGB, na.rm = TRUE)*100
 
 ## establishing a local linear relationship between seagrass cover and AGB
 ## plot not shown on webpage for brevity
 csv.biomass.AV$seagrass.cover.Laurant <- as.numeric(csv.biomass.AV$seagrass.cover.Laurant)
+lm.AGB_predictedcover.AV <- lm(seagrass.cover.Laurant ~ seagrassA, data = csv.biomass.AV)
 # ggplot(csv, aes(x = seagrass.cover.predicted)) +
 #   geom_histogram() +
 #   facet_grid(. ~ site)
 
 ## calculating variation from linear relationship
-csv.biomass.AV$seagrass.cover.predicted <- 0.12*csv.biomass.AV$seagrassA + 2.4
+csv.biomass.AV$seagrass.cover.predicted <-lm.AGB_predictedcover.AV$coefficients[2]*csv.biomass.AV$seagrassA + lm.AGB_predictedcover.AV$coefficients[1]
   csv.biomass.AV$seagrass.cover.predicted[csv.biomass.AV$seagrass.cover.predicted > 100] <- 100
 
 ## calculating data points spread over the 2D space   
 csv.biomass.AV$sectoring <- paste0(
   case_when(
-    csv.biomass.AV$seagrassA < 500 ~ 'a',
-    csv.biomass.AV$seagrassA < 1000 ~ 'b',
-    csv.biomass.AV$seagrassA < 2000 ~ 'c',
-    csv.biomass.AV$seagrassA < 3000 ~ 'd',
-    csv.biomass.AV$seagrassA < 4000 ~ 'e',
-    csv.biomass.AV$seagrassA >= 4000 ~ 'f'
+    csv.biomass.AV$seagrassA < 50 ~ 'a',
+    csv.biomass.AV$seagrassA < 100 ~ 'b',
+    csv.biomass.AV$seagrassA < 150 ~ 'c',
+    csv.biomass.AV$seagrassA < 200 ~ 'd',
+    csv.biomass.AV$seagrassA < 250 ~ 'e',
+    csv.biomass.AV$seagrassA >= 300 ~ 'f'
   ),
   case_when(
-    csv.biomass.AV$seagrassA < 500 ~ 'a',
-    csv.biomass.AV$seagrassB < 1000 ~ 'b',
-    csv.biomass.AV$seagrassB < 2000 ~ 'c',
-    csv.biomass.AV$seagrassB < 3000 ~ 'd',
-    csv.biomass.AV$seagrassB < 4000 ~ 'e',
-    csv.biomass.AV$seagrassB >= 4000 ~ 'f'
+    csv.biomass.AV$seagrassA < 50 ~ 'a',
+    csv.biomass.AV$seagrassB < 100 ~ 'b',
+    csv.biomass.AV$seagrassB < 150 ~ 'c',
+    csv.biomass.AV$seagrassB < 200 ~ 'd',
+    csv.biomass.AV$seagrassB < 250 ~ 'e',
+    csv.biomass.AV$seagrassB >= 300 ~ 'f'
   )
 )
 
@@ -456,13 +505,14 @@ csv.biomass.AV <- csv.biomass.AV %>%
 ## scoring parameters are unfortunately subjective
 csv.biomass.AV$score.initial <- csv.biomass.AV$residual_perc/100 + abs(csv.biomass.AV$seagrass.cover.predicted - 65)/100 + as.integer(!is.na(csv.biomass.AV$`spectral camera`))*-0.5 + as.numeric(table.sector.AV[csv.biomass.AV$sectoring]/100 + ifelse(is.na(table.sector.spectra.AV[csv.biomass.AV$sectoring]/20), 0, table.sector.spectra.AV[csv.biomass.AV$sectoring]/20))
 
-plt.score.initial <- ggplot(csv.biomass.AV, aes(x = seagrassB, y = seagrassA)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.score.initial <- ggplot(csv.biomass.AV, aes(x = seagrassA, y = seagrassB)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", name, " (", site, ")"), data_id = name, colour = score.initial, shape = spectra), position = position_dodge(0.1)) +
   scale_colour_viridis_c(option = 'turbo') +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
+  xlab(.xlab) + ylab(.ylab) +
+  xlim(c(0,xmax)) + ylim(c(0,ymax)) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('Initial scoring')
 
@@ -476,15 +526,15 @@ selected <- csv.biomass.AV %>%
 
 ## checking if the linear relationship between AGB and BGB is substantially changed after the data thinning
 ## representation is similar
-plt.score.selected <- ggplot(csv.biomass.AV %>% filter(name %in% selected | !is.na(csv.biomass.AV$`spectral camera`)), aes(x = seagrassB, y = seagrassA)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.score.selected <- ggplot(csv.biomass.AV %>% filter(name %in% selected | !is.na(csv.biomass.AV$`spectral camera`)), aes(x = seagrassA, y = seagrassB)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') +
   geom_abline(intercept = 220, slope = 1.3, colour = 'blue', linetype = 'dashed') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", name, " (", site, ")"), data_id = name, colour = score.initial, shape = site), position = position_dodge(0.1)) +
   scale_colour_viridis_c(option = 'turbo', values = c(0, max(csv.biomass.AV$score.initial))) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
-  xlim(c(0,2500)) + ylim(c(0,4000)) +
+  xlab(.xlab) + ylab(.ylab) +
+  xlim(c(0,xmax)) + ylim(c(0,ymax)) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('Final selection')
 
@@ -549,12 +599,12 @@ Of the stations with hyperspectral measurements, `r csv.biomass.BB %>% filter(A 
 #| warning: false
 
 table.amtSmallFieldSamples.BB <- csv.biomass.BB %>% 
-  filter(A < 370 | B < 370) %>%
+  filter(A < recommended_minimum | B < recommended_minimum) %>%
   filter(spectra == TRUE) %>%
   arrange(Station) %>%
   select(Station, A, B)
 
-knitr::kable(table.amtSmallFieldSamples.BB %>% rename(c("Collected leaf biomass (mg)" = A, "Collected root biomass (mg)" = B)), 
+knitr::kable(table.amtSmallFieldSamples.BB %>% rename(c("Collected leaf biomass (g/m^2)" = A, "Collected root biomass (g/m^2)" = B)), 
              format = "pipe",
              align = 'c',
              caption = 'Samples collected from Bourgneuf Bay that have insufficient biomass for the carbon measurement. These samples have hyperspectral measurements.')
@@ -574,19 +624,19 @@ Therefore, `r 30 - (sum(csv.biomass.BB$spectra) - 4)` more stations can be measu
 #| fig.cap: Data filtering for the Bourgneuf Bay samples. The light blue rectangle denotes that the station has insufficient biomass for the carbon measurement, based on the requirements outlined in section \@ref(toc-measurement). (A) establishes the general relationship between leaf and root biomass. (B) scores the non-zero stations based on the established criteria. (C) shows the change in the relationship between leaf and root biomass between the original data (represented by the blue dotted line) and the filtered data. The black dotted line represents the overall linear relationship between leaf and root biomass across all three locations.
 
 ## establishing a local linear relationship between leaf (AGB) and root (BGB)
-plt.leaf_root <- ggplot(csv.biomass.BB, aes(x = B, y = A)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.leaf_root <- ggplot(csv.biomass.BB, aes(x = A, y = B)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", Station), data_id = Station, shape = spectra)) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
+  xlab(.xlab) + ylab(.ylab) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('All stations')
 
 ## calculating variation from linear relationship
-csv.biomass.BB$predicted_AGB <- 0.86*csv.biomass.BB$B+260
-csv.biomass.BB$residual <- abs(csv.biomass.BB$predicted_AGB-csv.biomass.BB$A)
-csv.biomass.BB$residual_perc <- csv.biomass.BB$residual/mean(csv.biomass.BB$predicted_AGB, na.rm = TRUE)*100
+csv.biomass.BB$predicted_BGB <- 0.64*csv.biomass.BB$A+10
+csv.biomass.BB$residual <- abs(csv.biomass.BB$predicted_BGB-csv.biomass.BB$B)
+csv.biomass.BB$residual_perc <- csv.biomass.BB$residual/mean(csv.biomass.BB$predicted_BGB, na.rm = TRUE)*100
 
 ## remove NA values
 csv.biomass.BB <- csv.biomass.BB %>%
@@ -595,18 +645,18 @@ csv.biomass.BB <- csv.biomass.BB %>%
 ## calculating data points spread over the 2D space   
 csv.biomass.BB$sectoring <- paste0(
   case_when(
-    csv.biomass.BB$A < 1000 ~ 'a',
-    csv.biomass.BB$A > 1000 & csv.biomass.BB$A < 2000 ~ 'b',
-    csv.biomass.BB$A > 2000 & csv.biomass.BB$A < 3000 ~ 'c',
-    csv.biomass.BB$A > 3000 & csv.biomass.BB$A < 4000 ~ 'd',
-    csv.biomass.BB$A > 4000 ~ 'e'
+    csv.biomass.BB$A < 50 ~ 'a',
+    csv.biomass.BB$A > 50 & csv.biomass.BB$A < 100 ~ 'b',
+    csv.biomass.BB$A > 100 & csv.biomass.BB$A < 150 ~ 'c',
+    csv.biomass.BB$A > 150 & csv.biomass.BB$A < 200 ~ 'd',
+    csv.biomass.BB$A > 200 ~ 'e'
   ),
   case_when(
-    csv.biomass.BB$B < 1000 ~ 'a',
-    csv.biomass.BB$B > 1000 & csv.biomass.BB$B < 2000 ~ 'b',
-    csv.biomass.BB$B > 2000 & csv.biomass.BB$B < 3000 ~ 'c',
-    csv.biomass.BB$B > 3000 & csv.biomass.BB$B < 4000 ~ 'd',
-    csv.biomass.BB$B > 4000 ~ 'e'
+    csv.biomass.BB$B < 50 ~ 'a',
+    csv.biomass.BB$B > 50 & csv.biomass.BB$B < 100 ~ 'b',
+    csv.biomass.BB$B > 100 & csv.biomass.BB$B < 150 ~ 'c',
+    csv.biomass.BB$B > 150 & csv.biomass.BB$B < 200 ~ 'd',
+    csv.biomass.BB$B > 200 ~ 'e'
   )
 )
 
@@ -626,13 +676,13 @@ csv.biomass.BB <- csv.biomass.BB %>%
 ## scoring parameters are unfortunately subjective
 csv.biomass.BB$score.initial <- csv.biomass.BB$residual_perc/10 + as.integer(csv.biomass.BB$spectra == TRUE)*-0.8 + as.numeric(table.sector.BB[csv.biomass.BB$sectoring]/50 + table.sector.spectra.BB[csv.biomass.BB$sectoring]/10)
 
-plt.score.initial <- ggplot(csv.biomass.BB, aes(x = B, y = A)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.score.initial <- ggplot(csv.biomass.BB, aes(x = A, y = B)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", Station), data_id = Station, colour = score.initial, shape = spectra), position = position_dodge(0.1)) +
   scale_colour_viridis_c(option = 'turbo') +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
+  xlab(.xlab) + ylab(.ylab) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('Initial scoring')
 
@@ -645,15 +695,14 @@ selected <- csv.biomass.BB %>%
 
 ## checking if the linear relationship between AGB and BGB is substantially changed after the data thinning
 ## representation is similar
-plt.score.selected <- ggplot(csv.biomass.BB %>% filter(Station %in% selected | spectra == TRUE), aes(x = B, y = A)) +
-  geom_rect(aes(xmin = 0, xmax = 370, ymin = 0, ymax = 370), alpha = 0.5, fill = 'lightblue') +
+plt.score.selected <- ggplot(csv.biomass.BB %>% filter(Station %in% selected | spectra == TRUE), aes(x = A, y = B)) +
+  geom_rect(aes(xmin = 0, xmax = recommended_minimum, ymin = 0, ymax = recommended_minimum), alpha = 0.5, fill = 'lightblue') +
   geom_smooth(method = 'lm') +
-  geom_abline(intercept = 260, slope = 0.86, colour = 'blue', linetype = 'dashed') + 
-  geom_abline(intercept = 13, slope = 0.9, linetype = 'dashed') + ## based on combined results
+  geom_abline(intercept = 10, slope = 0.64, colour = 'blue', linetype = 'dashed') + 
+  geom_abline(intercept = leaf_root_intercept, slope = leaf_root_slope, linetype = 'dashed') + ## based on combined results
   geom_point_interactive(aes(tooltip = paste0("Station: ", Station), data_id = Station, colour = score.initial, shape = spectra), position = position_dodge(0.1)) +
-  scale_colour_viridis_c(option = 'turbo', values = c(0, max(csv.biomass.BB$score.initial))) +
-  xlab('Root biomass (mg)') + ylab('Leaf biomass (mg)') +
-  # xlim(c(0,2500)) + ylim(c(0,4000)) +
+  scale_colour_viridis_c(option = 'turbo', values = c(0, max(csv.biomass.BB$score.initial, na.rm = TRUE))) +
+  xlab(.xlab) + ylab(.ylab) +
   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   ggtitle('Final selection')
 
