@@ -1,0 +1,7 @@
+	Y	X	%cover	Substrate
+station 1	36.48192	-6.21222	100%	Mud
+Station 2	36.47798	-6.21383	100%	Mud
+station 3	36.48654	-6.20347	100%	Mud
+station 4	36.48428	-6.20356	0%	Mud
+station 5	36.5047	-6.18299	0%	Mud
+station 6	36.46654	-6.24343	0%	Sand
