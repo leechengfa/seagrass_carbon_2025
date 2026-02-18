@@ -742,16 +742,25 @@ The pooled sample set(s) are:
 
 ## TOC measurement
 
-The [measurement of total carbon (TC) and inorganic carbon (IC) content in fly ash](https://www.shimadzu.com/an/apl/22347/index.html) were performed using a [SSM-5000A Shimadzu Solid Sample Combusion Unit](https://www.shimadzu.com/an/products/total-organic-carbon-analysis/toc-analysis-system/ssm-5000a/index.html), attached to a proprietary software for immediate data logging (Figure \@ref(fig:SSMUI)). 
+The [measurement of total carbon (TC) and inorganic carbon (IC) content in fly ash](https://www.shimadzu.com/an/apl/22347/index.html) were performed using a [SSM-5000A Shimadzu Solid Sample Combusion Unit](https://www.shimadzu.com/an/products/total-organic-carbon-analysis/toc-analysis-system/ssm-5000a/index.html) attached to a [Shimadzu Total Organic Carbon Analyzer L-Series (TOC-L)](https://www.shimadzu.com/an/products/total-organic-carbon-analysis/toc-analysis/toc-l-series/index.html), with a proprietary software for immediate data logging (Figure \@ref(fig:SSMUI)). 
 
-To measure the TC content in a sample, about 70g of powdered biomass was combusted at 900 &deg;C for 8 minutes. For the IC content measurement, between 200-800 g of powdered biomass was mixed with 0.9 ml of phosphorous acid (HPO~3~) and combusted at 300 &deg;C until no carbon dioxide is detected. The increased weight of sample used was to increase the IC content measurement, as about 200 g of sample produced around 2 mg of carbon while 700 g of sample yielded around 6 mg of carbon. The measurements were scaled to the total weight of the samples using Equation \@ref(eq:carbon). 
+To measure the TC content in a sample, about 70g of powdered biomass was combusted at 900 &deg;C for 8 minutes. For the IC content measurement, between 200-800 g of powdered biomass was mixed with 0.9 ml of phosphorous acid (HPO~3~) and combusted at 300 &deg;C until no carbon dioxide is detected. The increased weight of sample used was to increase the IC content measurement, as about 200 g of sample produced around 2 mg of carbon while 700 g of sample yielded around 6 mg of carbon. The measurements were scaled to the unit weight of the samples based on the sample dry weight used for the measurement (Equation \@ref(eq:carbon)). 
 
-<!-- check formula -->
 \begin{equation}
-Carbon\,concentration\,(g\,per\,C/kg) = \frac{Measured\,Carbon\,(mg) \times Dry\,Weight\,(\%) \times 1000}{Wet\,weight\,of\,essay\,(mg)} (\#eq:carbon)
+Carbon\,content\,(g\,per\,C/g) = \frac{Measured\,Carbon\,(g)}{Sample\,Dry\,weight\,(g)} (\#eq:carbon)
 \end{equation}
 
-The [difference between the TC and IC content is the total organic carbon content (TOC)](https://www.shimadzu.com/an/apl/24168/index.html).
+A subset of the samples were used to test for possible water content in the sample. These samples were placed in a 105 &deg;C oven and measured after 2 hours and 3 hours. Any difference in weight was attributed to water content loss (Equation \@ref(eq:correctedDW)). Since only a subset was used in this test, the results were averaged and used to correct for the sample dry weight in Equation \@ref(eq:carbon).
+
+\begin{equation}
+Corrected\,dry\,weight = \frac{\textit{Pre-oven dry weight}}{\textit{Post-oven dry weight}} \times \textit{Sample dry weight used in the carbon measurement} (\#eq:correctedDW)
+\end{equation}
+
+The [difference between the TC and IC content is the total organic carbon content (TOC)](https://www.shimadzu.com/an/apl/24168/index.html) (Equation \@ref(eq:toc)). The TOC is the mass of organic carbon in a unit mass of a dry weight sample.
+
+\begin{equation}
+Total\,organic\,carbon\,content\,(TOC,\,g\,C/g) = Total\,carbon\,content - Total\,inorganic\,carbon\,content (\#eq:toc)
+\end{equation}
 
 ```{r SSMUI}
 #| echo: false
@@ -780,5 +789,187 @@ Based on our visual observation, it seemed important for the samples to be suffi
 knitr::include_graphics('img/comparison_burnt_samples.jpg')
 ```
 
+Seagrass carbon stock (g C m\textsuperscript{-2}) was then obtained by first multiplying the TOC with the total sample dry weight, and then dividing with the area of the core (Equations \@ref(eq:cstock) and \@ref(eq:corearea)). 
+
+\begin{equation}
+Organic\,carbon\,stock\,(g\,C\,m^{-2}) = \frac{TOC \times Total\,sample\,dry\,weight}{Core\,area} (\#eq:cstock)
+\end{equation}
+
+\begin{equation}
+Core\,area\,(m^2) = \pi \times (\frac{0.15}{2})^2 (\#eq:corearea)
+\end{equation}
+
+## Spatial upscaling
+
+This section will be updated when the mapping work is completed.
+Total seagrass carbon stock will be derived by applying the seagrass carbon stock equation \@ref(eq:cstock)) to the seagrass NDVI map. 
+
+
+## Uncertainty
+
+This section will be updated when the work is completed.
+
+
+# Results
+
+```{r results_preprocessing}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+csv.carbon.AV <- read_xlsx('data/carbon/Aveiro2025_Biomass_C_cores.xlsx', sheet = 'data')
+  csv.carbon.AV$Site <- "Ria de Aveiro"
+# csv.carbon.BB
+csv.carbon.CB <- read_xlsx('data/carbon/Cadiz2025_Biomass_C_cores.xlsx', sheet = 'data')
+  csv.carbon.CB$Site <- "Cadiz Bay"
+
+csv.carbon <- rbind(csv.carbon.AV, csv.carbon.CB) 
+  ## conversion from mg to g to avoid future conversions between mg <-> g
+  csv.carbon$DryMassTotal <- as.numeric(csv.carbon$DryMassTotal)/1000
+  csv.carbon$DryMassTC <- as.numeric(csv.carbon$DryMassTC)/1000
+  csv.carbon$DryMassIC <- as.numeric(csv.carbon$DryMassIC)/1000
+  csv.carbon$MeasuredTC <- as.numeric(csv.carbon$MeasuredTC)/1000
+  csv.carbon$MeasuredIC <- as.numeric(csv.carbon$MeasuredIC)/1000
+  csv.carbon$Group <- factor(csv.carbon$Group, levels = c('Natural', 'Rewilded', 'spc_0', 'spc_50', 'spc_100'), labels = c('Natural', 'Rewilded', '0% seagrass\ncover', '50% seagrass\ncover', '100% seagrass\ncover'))
+
+csv.carbon <- csv.carbon %>% 
+  filter(!is.na(MeasuredIC)) %>%
+  mutate(TC_gG = MeasuredTC/DryMassTC, TIC_gG = MeasuredIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
+         # core is 15 cm in diameter; conversion to per unit area (m2)
+         DryMassTotalPerM2 = DryMassTotal/(pi*(0.15/2)^2))
+  # csv.carbon$TOC_gG[is.na(csv.carbon$TOC_gG)] <- 0 ## causes problems for boxplot for the rewilded sites; better to remove them
+```
+
+## Biomass
+
+Like the previous figures \@ref(fig:selectionCB), \@ref(fig:selectionAV) and \@ref(fig:selectionBB), Figure \@ref(fig:DWBoxplot) shows that seagrasses generally have more aboveground biomass than the belowground biomass, with an exception in the 50% seagrass cover condition. 
+
+```{r DWBoxplot}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.align: 'center'
+#| fig.cap: Boxplot showing the aboveground and belowground dry weight biomass (g per unit area) of the cores across different conditions. Stations with zero biomass were excluded from the analysis to avoid skewing the boxplots towards zero. 
+
+.DWPerArea <- bquote('Dry weight biomass per unit area'~(g/m^2))
+
+ggplot(csv.carbon %>% filter(DryMassTotalPerM2 > 0), aes(x = Group, y = DryMassTotalPerM2, fill = PartType)) +
+  geom_boxplot() +
+  scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
+  xlab('Station conditions') + ylab(.DWPerArea)
+```
+
+## TOC measurement
+
+Based on the initial results from Cadiz Bay, the natural site in Ria de Aveiro and a small number of samples from the rewilded site in Ria de Aveiro, no relationship between the total dry weight of the samples and their carbon concentration can be observed (very low R^2^ scores, Figure \@ref(fig:carbonconcScatterplot)). 
+
+When classified based on the different station conditions and plotted onto a box plot, it is observed that the leaf carbon content seems to be more in the rewilded site, while the root carbon content seems to be less (Figure \@ref(fig:carbonconcBoxplot)). Similarly, in Cadiz Bay, the carbon content of both the leaves and roots of stations with 100% seagrass cover is more than those from stations with only about 50% seagrass cover. 
+
+This analysis is pending the completion of data measurement, before a statistical test(s) can be applied. 
+
+```{r carbonconcScatterplot}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.cap: Scatterplot showing the seagrass aboveground and belowground carbon content (C g per dry weight g) of the cores across different conditions. (A) comprises all non-zero data while (B) excludes stations with very high biomass that may skew the analysis. 
+
+.dwPerArea <- bquote('Total Dry Weight per unit area'~(g/m^2))
+.CconcPerDW <- 'Carbon content (Carbon g / Dry Weight g)'
+
+plt.carbon_DW_all <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_gG)) + 
+  geom_smooth(method = 'lm') +
+  geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
+  scale_colour_manual('Biomass', values = c('Leaves' = 'green', 'Roots' = 'brown')) +
+  stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
+  xlab(.dwPerArea) + ylab(.CconcPerDW)
+
+plt.carbon_DW_filt <- ggplot(csv.carbon %>% filter(DryMassTotal < 5), aes(x = DryMassTotalPerM2, y = TOC_gG)) + 
+  geom_smooth(method = 'lm') +
+  geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
+  scale_colour_manual('Biomass', values = c('Leaves' = 'green', 'Roots' = 'brown')) +
+  stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
+  xlab(.dwPerArea) + ylab(.CconcPerDW)
+
+girafe(ggobj = plt.carbon_DW_all +  plt.carbon_DW_filt + plot_annotation(tag_levels = 'A') + plot_layout(guides = 'collect', axes = 'collect'),
+         options = list(
+           opts_hover(css = "stroke-width:2.5px"),
+           opts_hover_inv(css = "opacity:0.25"),
+           opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px")
+         ),
+         height_svg = 4.5, width_svg = 12
+  )
+```
+
+```{r carbonconcBoxplot}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.align: 'center'
+#| fig.cap: Boxplot showing the seagrass aboveground and belowground carbon content (C kg per dry weight g) of the cores across different conditions. All zero data were removed from the analysis to avoid skewing the boxplot towards zero.
+
+ggplot(csv.carbon, aes(x = Group, y = TOC_gG, fill = PartType)) +
+  geom_boxplot() +
+  scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
+  xlab('Station conditions') + ylab(.CconcPerDW)
+```
+
+The seagrass carbon stock seemed similar between the natural and rewilded sites in Ria de Aveiro. In Cadiz Bay, the seagrass carbon stock for both the leaves and roots are greater in the 100% seagrass cover stations than the 50% seagrass cover station. Notably, leaf carbon stock is substantially higher than root carbon stocks in the 100% seagrass cover stations (Figure \@ref(fig:carbonstockBoxplot)). 
+
+```{r carbonstockPreprocessing}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+csv.carbon$TOC_stock <- csv.carbon$TOC_gG * csv.carbon$DryMassTotalPerM2
+
+.CPerArea <- bquote('Carbon stock'~(g/m^2))
+```
+
+<!-- ```{r carbonstockScatterplot} -->
+<!-- #| echo: false -->
+<!-- #| error: false -->
+<!-- #| message: false -->
+<!-- #| warning: false -->
+<!-- #| fig-align: center -->
+<!-- #| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon stock (g C per unit area) of the cores across different conditions. -->
+<!--  -->
+<!-- plt.carbonstock_DW <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_stock)) +  -->
+<!--   geom_smooth(method = 'lm') + -->
+<!--   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) + -->
+<!--   scale_colour_manual('Biomass', values = c('Leaves' = 'green', 'Roots' = 'brown')) + -->
+<!--   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) + -->
+<!--   xlab(.dwPerArea) + ylab(.CPerArea) -->
+<!--  -->
+<!-- girafe(ggobj = plt.carbonstock_DW, -->
+<!--          options = list( -->
+<!--            opts_hover(css = "stroke-width:2.5px"), -->
+<!--            opts_hover_inv(css = "opacity:0.25"), -->
+<!--            opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px") -->
+<!--          ), -->
+<!--          height_svg = 4.5, width_svg = 12 -->
+<!--   ) -->
+<!-- ``` -->
+
+```{r carbonstockBoxplot}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.align: 'center'
+#| fig.cap: Boxplot showing the seagrass aboveground and belowground organic carbon stock (g C per unit area) of the cores across different conditions. 
+
+ggplot(csv.carbon, aes(x = Group, y = TOC_stock, fill = PartType)) + 
+  geom_boxplot() +
+  scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
+  xlab('Station conditions') + ylab(.CPerArea) 
+```
+
+## Spatial upscaling
+
+This section will be updated when the mapping work is completed.
 
 # References
