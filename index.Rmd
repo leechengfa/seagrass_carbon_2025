@@ -386,31 +386,6 @@ ggplot(csv.carbon.ratio, aes(x = Group, y = AgbBgbRatio)) +
   xlab(.site) + ylab(.AgbBgbRatio)
 ```
 
-```{r DWAgbBgbRatioScatterplot}
-#| echo: false
-#| error: false
-#| message: false
-#| warning: false
-#| fig-align: center
-#| fig-cap: Scatterplot showing the seagrass aboveground and belowground dry weight (g) of the cores across different conditions against their corresponding AGB/BGB ratio.
-
-plt.DW_AgbBgbRatio <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = AgbBgbRatio)) +
-  geom_smooth(method = 'lm') +
-  geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
-  scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) +
-  stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
-  xlab(.dwPerArea) + ylab(.AgbBgbRatio) +
-  facet_grid(. ~ PartType)
-
-girafe(ggobj = plt.DW_AgbBgbRatio,
-         options = list(
-           opts_hover(css = "stroke-width:2.5px"),
-           opts_hover_inv(css = "opacity:0.25"),
-           opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px")
-         ),
-         height_svg = 4.5, width_svg = 12
-  )
-```
 
 ## TOC measurement
 
@@ -436,31 +411,31 @@ ggplot(csv.carbon %>% filter(!ID %in% c('NG 18','RG 3')) %>% filter(!Label %in% 
   xlab(.site) + ylab(.CconcPerDW)
 ```
 
-```{r carboncontentAgbBgbRatioScatterplot}
-#| echo: false
-#| error: false
-#| message: false
-#| warning: false
-#| fig-align: center
-#| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon content (C g per dry weight g) of the cores across different conditions against their corresponding AGB/BGB ratio.
-
-plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon %>% filter(!ID %in% c('15')), aes(x = AgbBgbRatio, y = TOC_gG*100)) +
-  geom_smooth(method = 'lm') +
-  geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
-  scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) +
-  stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
-  xlab(.AgbBgbRatio) + ylab(.CconcPerDW) +
-  facet_grid(. ~ PartType)
-
-girafe(ggobj = plt.carbonstock_AgbBgbRatio,
-         options = list(
-           opts_hover(css = "stroke-width:2.5px"),
-           opts_hover_inv(css = "opacity:0.25"),
-           opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px")
-         ),
-         height_svg = 4.5, width_svg = 12
-  )
-```
+<!-- # ```{r carboncontentAgbBgbRatioScatterplot} -->
+<!-- # #| echo: false -->
+<!-- # #| error: false -->
+<!-- # #| message: false -->
+<!-- # #| warning: false -->
+<!-- # #| fig-align: center -->
+<!-- # #| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon content (C g per dry weight g) of the cores across different conditions against their corresponding AGB/BGB ratio. -->
+<!-- #  -->
+<!-- # plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon %>% filter(!ID %in% c('15')), aes(x = AgbBgbRatio, y = TOC_gG*100)) + -->
+<!-- #   geom_smooth(method = 'lm') + -->
+<!-- #   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) + -->
+<!-- #   scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) + -->
+<!-- #   stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) + -->
+<!-- #   xlab(.AgbBgbRatio) + ylab(.CconcPerDW) + -->
+<!-- #   facet_grid(. ~ PartType) -->
+<!-- #  -->
+<!-- # girafe(ggobj = plt.carbonstock_AgbBgbRatio, -->
+<!-- #          options = list( -->
+<!-- #            opts_hover(css = "stroke-width:2.5px"), -->
+<!-- #            opts_hover_inv(css = "opacity:0.25"), -->
+<!-- #            opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px") -->
+<!-- #          ), -->
+<!-- #          height_svg = 4.5, width_svg = 12 -->
+<!-- #   ) -->
+<!-- # ``` -->
 
 The seagrass carbon stock seemed similar between the natural and rewilded sites in Ria de Aveiro. In Cadiz Bay, the seagrass carbon stock for both the leaves and roots are greater in the 100% seagrass cover stations than the 50% seagrass cover station. Notably, leaf carbon stock is substantially higher than root carbon stocks in the 100% seagrass cover stations (Figure \@ref(fig:carbonstockBoxplot)), which is a natural product (multiplication) of the very high leaf total dry weight per unit area for the 100% cover stations in Cadiz (Figure \@ref(fig:DWBoxplot)).  
 
@@ -491,56 +466,31 @@ ggplot(csv.carbon %>% filter(!Label %in% c('Cadiz_2025_L_02','Cadiz_2025_L_03'))
   xlab(.site) + ylab(.CPerArea) 
 ```
 
-```{r carbonstockScatterplot}
-#| echo: false
-#| error: false
-#| message: false
-#| warning: false
-#| fig-align: center
-#| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon stock (C g per unit area) of the cores across different conditions.
-
-plt.carbonstock_DW <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_stock)) +
-  geom_smooth(method = 'lm') +
-  geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
-  scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) +
-  stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
-  xlab(.dwPerArea) + ylab(.CPerArea)
-
-girafe(ggobj = plt.carbonstock_DW,
-         options = list(
-           opts_hover(css = "stroke-width:2.5px"),
-           opts_hover_inv(css = "opacity:0.25"),
-           opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px")
-         ),
-         height_svg = 4.5, width_svg = 12
-  )
-```
-
-```{r carbonstockAgbBgbRatioScatterplot}
-#| echo: false
-#| error: false
-#| message: false
-#| warning: false
-#| fig-align: center
-#| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon stock (C g per unit area) of the cores across different conditions against their corresponding AGB/BGB ratio.
-
-plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon, aes(x = AgbBgbRatio, y = TOC_gG*100)) +
-  geom_smooth(method = 'lm') +
-  geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
-  scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) +
-  stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
-  xlab(.AgbBgbRatio) + ylab(.CPerArea) +
-  facet_grid(. ~ PartType)
-
-girafe(ggobj = plt.carbonstock_AgbBgbRatio,
-         options = list(
-           opts_hover(css = "stroke-width:2.5px"),
-           opts_hover_inv(css = "opacity:0.25"),
-           opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px")
-         ),
-         height_svg = 4.5, width_svg = 12
-  )
-```
+<!-- # ```{r carbonstockAgbBgbRatioScatterplot} -->
+<!-- # #| echo: false -->
+<!-- # #| error: false -->
+<!-- # #| message: false -->
+<!-- # #| warning: false -->
+<!-- # #| fig-align: center -->
+<!-- # #| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon stock (C g per unit area) of the cores across different conditions against their corresponding AGB/BGB ratio. -->
+<!-- #  -->
+<!-- # plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon, aes(x = AgbBgbRatio, y = TOC_gG*100)) + -->
+<!-- #   geom_smooth(method = 'lm') + -->
+<!-- #   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) + -->
+<!-- #   scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) + -->
+<!-- #   stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) + -->
+<!-- #   xlab(.AgbBgbRatio) + ylab(.CPerArea) + -->
+<!-- #   facet_grid(. ~ PartType) -->
+<!-- #  -->
+<!-- # girafe(ggobj = plt.carbonstock_AgbBgbRatio, -->
+<!-- #          options = list( -->
+<!-- #            opts_hover(css = "stroke-width:2.5px"), -->
+<!-- #            opts_hover_inv(css = "opacity:0.25"), -->
+<!-- #            opts_tooltip(opacity = 0.95, css = "padding:6px; font-size:12px") -->
+<!-- #          ), -->
+<!-- #          height_svg = 4.5, width_svg = 12 -->
+<!-- #   ) -->
+<!-- # ``` -->
 
 ## Spatial upscaling
 
