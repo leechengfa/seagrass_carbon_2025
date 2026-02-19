@@ -832,9 +832,14 @@ csv.carbon <- rbind(csv.carbon.AV, csv.carbon.CB)
   csv.carbon$MeasuredIC <- as.numeric(csv.carbon$MeasuredIC)/1000
   csv.carbon$Group <- factor(csv.carbon$Group, levels = c('Natural', 'Rewilded', 'spc_0', 'spc_50', 'spc_100'), labels = c('Natural', 'Rewilded', '0% seagrass\ncover', '50% seagrass\ncover', '100% seagrass\ncover'))
 
+## to work on the dry weight correction: does not affect content values; affects stock values  
+  
 csv.carbon <- csv.carbon %>% 
   filter(!is.na(MeasuredIC)) %>%
-  mutate(TC_gG = MeasuredTC/DryMassTC, TIC_gG = MeasuredIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
+  mutate(# sample dry weight correction (simple version; not separated by site)
+         DryMassIC = DryMassIC*0.9,
+         # carbon content
+         TC_gG = MeasuredTC/DryMassTC, TIC_gG = MeasuredIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
          # core is 15 cm in diameter; conversion to per unit area (m2)
          DryMassTotalPerM2 = DryMassTotal/(pi*(0.15/2)^2))
   # csv.carbon$TOC_gG[is.na(csv.carbon$TOC_gG)] <- 0 ## causes problems for boxplot for the rewilded sites; better to remove them
@@ -873,23 +878,23 @@ This analysis is pending the completion of data measurement, before a statistica
 #| error: false
 #| message: false
 #| warning: false
-#| fig.cap: Scatterplot showing the seagrass aboveground and belowground carbon content (C g per dry weight g) of the cores across different conditions. (A) comprises all non-zero data while (B) excludes stations with very high biomass that may skew the analysis. 
+#| fig.cap: Scatterplot showing the percent carbon content (C g per dry weight g) in the seagrass above- and belowground biomass in the cores across different conditions. (A) comprises all non-zero data while (B) excludes stations with very high biomass that may skew the analysis. 
 
 .dwPerArea <- bquote('Total Dry Weight per unit area'~(g/m^2))
-.CconcPerDW <- 'Carbon content (Carbon g / Dry Weight g)'
+.CconcPerDW <- 'Carbon content (% of Carbon g per Dry Weight g)'
 
-plt.carbon_DW_all <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_gG)) + 
+plt.carbon_DW_all <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_gG*100)) + 
   geom_smooth(method = 'lm') +
   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
   scale_colour_manual('Biomass', values = c('Leaves' = 'green', 'Roots' = 'brown')) +
-  stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
+  stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   xlab(.dwPerArea) + ylab(.CconcPerDW)
 
-plt.carbon_DW_filt <- ggplot(csv.carbon %>% filter(DryMassTotal < 5), aes(x = DryMassTotalPerM2, y = TOC_gG)) + 
+plt.carbon_DW_filt <- ggplot(csv.carbon %>% filter(DryMassTotal < 5), aes(x = DryMassTotalPerM2, y = TOC_gG*100)) + 
   geom_smooth(method = 'lm') +
   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
   scale_colour_manual('Biomass', values = c('Leaves' = 'green', 'Roots' = 'brown')) +
-  stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
+  stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
   xlab(.dwPerArea) + ylab(.CconcPerDW)
 
 girafe(ggobj = plt.carbon_DW_all +  plt.carbon_DW_filt + plot_annotation(tag_levels = 'A') + plot_layout(guides = 'collect', axes = 'collect'),
@@ -908,15 +913,15 @@ girafe(ggobj = plt.carbon_DW_all +  plt.carbon_DW_filt + plot_annotation(tag_lev
 #| message: false
 #| warning: false
 #| fig.align: 'center'
-#| fig.cap: Boxplot showing the seagrass aboveground and belowground carbon content (C kg per dry weight g) of the cores across different conditions. All zero data were removed from the analysis to avoid skewing the boxplot towards zero.
+#| fig.cap: Boxplot showing the percent carbon content (C g per dry weight g) in the seagrass above- and belowground biomass in the cores across different conditions. All zero data were removed from the analysis to avoid skewing the boxplot towards zero.
 
-ggplot(csv.carbon, aes(x = Group, y = TOC_gG, fill = PartType)) +
+ggplot(csv.carbon %>% filter(!ID == 'NG 18') %>% filter(!ID == 'RG 3'), aes(x = Group, y = TOC_gG*100, fill = PartType)) +
   geom_boxplot() +
   scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
   xlab('Station conditions') + ylab(.CconcPerDW)
 ```
 
-The seagrass carbon stock seemed similar between the natural and rewilded sites in Ria de Aveiro. In Cadiz Bay, the seagrass carbon stock for both the leaves and roots are greater in the 100% seagrass cover stations than the 50% seagrass cover station. Notably, leaf carbon stock is substantially higher than root carbon stocks in the 100% seagrass cover stations (Figure \@ref(fig:carbonstockBoxplot)). 
+The seagrass carbon stock seemed similar between the natural and rewilded sites in Ria de Aveiro. In Cadiz Bay, the seagrass carbon stock for both the leaves and roots are greater in the 100% seagrass cover stations than the 50% seagrass cover station. Notably, leaf carbon stock is substantially higher than root carbon stocks in the 100% seagrass cover stations (Figure \@ref(fig:carbonstockBoxplot)), which is a natural product (multiplication) of the very high leaf total dry weight per unit area for the 100% cover stations in Cadiz (Figure \@ref(fig:carbonconcScatterplot)A).  
 
 ```{r carbonstockPreprocessing}
 #| echo: false
@@ -936,14 +941,14 @@ csv.carbon$TOC_stock <- csv.carbon$TOC_gG * csv.carbon$DryMassTotalPerM2
 <!-- #| warning: false -->
 <!-- #| fig-align: center -->
 <!-- #| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon stock (g C per unit area) of the cores across different conditions. -->
-<!--  -->
-<!-- plt.carbonstock_DW <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_stock)) +  -->
+<!-- -->
+<!-- plt.carbonstock_DW <- ggplot(csv.carbon, aes(x = DryMassTotalPerM2, y = TOC_stock)) + -->
 <!--   geom_smooth(method = 'lm') + -->
 <!--   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) + -->
 <!--   scale_colour_manual('Biomass', values = c('Leaves' = 'green', 'Roots' = 'brown')) + -->
 <!--   stat_regline_equation(label.x.npc = 'left', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) + -->
 <!--   xlab(.dwPerArea) + ylab(.CPerArea) -->
-<!--  -->
+<!-- -->
 <!-- girafe(ggobj = plt.carbonstock_DW, -->
 <!--          options = list( -->
 <!--            opts_hover(css = "stroke-width:2.5px"), -->
