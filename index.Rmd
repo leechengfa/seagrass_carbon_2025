@@ -363,7 +363,7 @@ Figure \@ref(fig:DWBoxplot) shows that seagrasses generally have more abovegroun
 #| fig.align: 'center'
 #| fig.cap: Boxplot showing the aboveground and belowground dry weight biomass (g per unit area) of the cores across different conditions. Stations with zero biomass were excluded from the analysis to avoid skewing the boxplots towards zero. 
 
-ggplot(csv.carbon %>% filter(DryMassTotalPerM2 > 0), aes(x = Group, y = DryMassTotalPerM2, fill = PartType)) +
+ggplot(csv.carbon %>% filter(DryMassTotalPerM2 > 0) %>% filter(!Label %in% c('Cadiz_2025_R_09','Cadiz_2025_R_07','NR_36_B','NG_19_B','NG_26_B','NR_49_B','NG_20_B','NG_20_A','NG_26_A','NG_19_A')), aes(x = Group, y = DryMassTotalPerM2, fill = PartType)) +
   geom_boxplot() +
   geom_point(aes(colour = PartType), position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
   scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
@@ -428,7 +428,7 @@ This analysis is pending the completion of data measurement, before a statistica
 #| fig.align: 'center'
 #| fig.cap: Boxplot showing the percent carbon content (C g per dry weight g) in the seagrass above- and belowground biomass in the cores across different conditions. All zero data were removed from the analysis to avoid skewing the boxplot towards zero.
 
-ggplot(csv.carbon %>% filter(!ID == 'NG 18') %>% filter(!ID == 'RG 3'), aes(x = Group, y = TOC_gG*100, fill = PartType)) +
+ggplot(csv.carbon %>% filter(!ID %in% c('NG 18','RG 3')) %>% filter(!Label %in% c('Cadiz_2025_L_05','Cadiz_2025_R_05','Cadiz_2025_L_15','Cadiz_2025_R_15')), aes(x = Group, y = TOC_gG*100, fill = PartType)) +
   geom_boxplot() +
   geom_point(aes(colour = PartType), position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
   scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
@@ -444,7 +444,7 @@ ggplot(csv.carbon %>% filter(!ID == 'NG 18') %>% filter(!ID == 'RG 3'), aes(x = 
 #| fig-align: center
 #| fig-cap: Scatterplot showing the seagrass aboveground and belowground organic carbon content (C g per dry weight g) of the cores across different conditions against their corresponding AGB/BGB ratio.
 
-plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon, aes(x = AgbBgbRatio, y = TOC_gG*100)) +
+plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon %>% filter(!ID %in% c('15')), aes(x = AgbBgbRatio, y = TOC_gG*100)) +
   geom_smooth(method = 'lm') +
   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
   scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) +
@@ -483,7 +483,7 @@ csv.carbon$TOC_stock <- csv.carbon$TOC_gG * csv.carbon$DryMassTotalPerM2
 #| fig.align: 'center'
 #| fig.cap: Boxplot showing the seagrass aboveground and belowground organic carbon stock (C g per unit area) of the cores across different conditions. 
 
-ggplot(csv.carbon, aes(x = Group, y = TOC_stock, fill = PartType)) + 
+ggplot(csv.carbon %>% filter(!Label %in% c('Cadiz_2025_L_02','Cadiz_2025_L_03')), aes(x = Group, y = TOC_stock, fill = PartType)) + 
   geom_boxplot() +
   geom_point(aes(colour = PartType), position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
   scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
@@ -529,7 +529,7 @@ plt.carbonstock_AgbBgbRatio <- ggplot(csv.carbon, aes(x = AgbBgbRatio, y = TOC_g
   geom_point_interactive(aes(tooltip = paste0("Station: ", ID), colour = PartType, shape = Group)) +
   scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown')) +
   stat_regline_equation(label.x.npc = 'centre', label.y.npc = 'top', decreasing = TRUE, aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
-  xlab(.AgbBgbRatio) + ylab(.CconcPerDW) +
+  xlab(.AgbBgbRatio) + ylab(.CPerArea) +
   facet_grid(. ~ PartType)
 
 girafe(ggobj = plt.carbonstock_AgbBgbRatio,
