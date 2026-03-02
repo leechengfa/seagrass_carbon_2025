@@ -309,18 +309,19 @@ This section will be updated when the work is completed.
 
 csv.carbon.AV <- read_xlsx('data/carbon/Aveiro2025_Biomass_C_cores.xlsx', sheet = 'data')
   csv.carbon.AV$Site <- "Ria de Aveiro"
-# csv.carbon.BB
+csv.carbon.BB <- read_xlsx('data/carbon/Bourgneuf2025_Biomass_C_cores.xlsx', sheet = 'data')
+  csv.carbon.BB$Site <- "Bourgneuf Bay"
 csv.carbon.CB <- read_xlsx('data/carbon/Cadiz2025_Biomass_C_cores.xlsx', sheet = 'data')
   csv.carbon.CB$Site <- "Cadiz Bay"
 
-csv.carbon <- rbind(csv.carbon.AV, csv.carbon.CB) 
+csv.carbon <- rbind(csv.carbon.AV, csv.carbon.BB, csv.carbon.CB) 
   ## conversion from mg to g to avoid future conversions between mg <-> g
   csv.carbon$DryMassTotal <- as.numeric(csv.carbon$DryMassTotal)/1000
   csv.carbon$DryMassTC <- as.numeric(csv.carbon$DryMassTC)/1000
   csv.carbon$DryMassIC <- as.numeric(csv.carbon$DryMassIC)/1000
-  csv.carbon$MeasuredTC <- as.numeric(csv.carbon$MeasuredTC)/1000
-  csv.carbon$MeasuredIC <- as.numeric(csv.carbon$MeasuredIC)/1000
-  csv.carbon$Group <- factor(csv.carbon$Group, levels = c('Natural', 'Rewilded', 'spc_0', 'spc_50', 'spc_100'), labels = c('Natural\n(Aveiro)', 'Rewilded\n(Aveiro)', '0% seagrass\ncover\n(Cadiz)', '50% seagrass\ncover\n(Cadiz)', '100% seagrass\ncover\n(Cadiz)'))
+  csv.carbon$CarbonTC <- as.numeric(csv.carbon$CarbonTC)/1000
+  csv.carbon$CarbonIC <- as.numeric(csv.carbon$CarbonIC)/1000
+  csv.carbon$Group <- factor(csv.carbon$Group, levels = c('Natural', 'Rewilded', 'spc_0', 'spc_50', 'spc_100', 'Low', 'High'), labels = c('Natural\n(Aveiro)', 'Rewilded\n(Aveiro)', '0%\nseagrass\ncover\n(Cadiz)', '50%\nseagrass\ncover\n(Cadiz)', '100%\nseagrass\ncover\n(Cadiz)', 'Low\n(Bourgneuf\nBay)', 'High\n(Bourgneuf\nBay)'))
 
 ## to work on the dry weight correction: does not affect content values; affects stock values  
   
@@ -329,7 +330,7 @@ csv.carbon <- csv.carbon %>%
   mutate(# sample dry weight correction (simple version; not separated by site)
          DryMassIC = DryMassIC*0.9,
          # carbon content
-         TC_gG = MeasuredTC/DryMassTC, TIC_gG = MeasuredIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
+         TC_gG = CarbonTC/DryMassTC, TIC_gG = CarbonIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
          # core is 15 cm in diameter; conversion to per unit area (m2)
          DryMassTotalPerM2 = DryMassTotal/(pi*(0.15/2)^2))
   # csv.carbon$TOC_gG[is.na(csv.carbon$TOC_gG)] <- 0 ## causes problems for boxplot for the rewilded sites; better to remove them
@@ -379,10 +380,10 @@ ggplot(csv.carbon %>% filter(DryMassTotalPerM2 > 0) %>% filter(!Label %in% c('Ca
 #| fig.align: 'center'
 #| fig.cap: Boxplot showing the ratio of aboveground to belowground dry weight biomass (g per unit area) of the cores across different conditions. Stations with zero biomass were naturally excluded from the analysis by virtue of division by zero. 
 
-ggplot(csv.carbon.ratio, aes(x = Group, y = AgbBgbRatio)) +
+ggplot(csv.carbon.ratio %>% filter(!is.infinite(AgbBgbRatio)), aes(x = Group, y = AgbBgbRatio)) +
   geom_boxplot() +
   geom_point(position = position_jitterdodge(jitter.width = 0.4)) +
-  scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
+  # scale_fill_manual('Biomass', valu es = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
   xlab(.site) + ylab(.AgbBgbRatio)
 ```
 
