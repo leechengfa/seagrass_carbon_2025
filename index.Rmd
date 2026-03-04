@@ -301,6 +301,51 @@ This section will be updated when the work is completed.
 
 # Results
 
+```{r dryweightpreprocessing}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+csv.moisture.AV <- read_xlsx('data/carbon/Aveiro2025_Biomass_C_cores.xlsx', sheet = 'moisture')
+  csv.moisture.AV$Site <- "Ria de Aveiro"
+csv.moisture.BB <- read_xlsx('data/carbon/Bourgneuf2025_Biomass_C_cores.xlsx', sheet = 'moisture')
+  csv.moisture.BB$Site <- "Bourgneuf Bay"
+csv.moisture.CB <- read_xlsx('data/carbon/Cadiz2025_Biomass_C_cores.xlsx', sheet = 'moisture')
+  csv.moisture.CB$Site <- "Cadiz Bay"
+
+csv.moisture <- rbind(csv.moisture.AV, csv.moisture.BB, csv.moisture.CB) 
+  ## all units are in mg and will be kept so, for the final output is a unitless ratio
+  csv.moisture$`Total weight with container` <- as.numeric(csv.moisture$`Total weight with container`)
+  csv.moisture$Group <- factor(csv.moisture$Group, levels = c('Natural', 'Rewilded', 'spc_50', 'spc_100', 'High'), labels = c('Natural\n(Aveiro)', 'Rewilded\n(Aveiro)', '50%\nseagrass\ncover\n(Cadiz)', '100%\nseagrass\ncover\n(Cadiz)', 'High\n(Bourgneuf\nBay)'))
+
+csv.moisture <- csv.moisture %>%
+  mutate(ratio = `Transferred weight after 3 hours`/`Initial weight`)
+
+averaged.moisture <- mean(csv.moisture$ratio)
+```
+
+As there were insufficient remaining samples for the dry weight test, three samples each from Cadiz Bay, the natural and the rewilded site in Ria de Aveiro, and Bourgneuf Bay were tested (Figure \@ref(fig:dryweightcorrection)). While the limited sample size hampered the analysis for trends and patterns, the overall range of ratio lies between 0.88 and 0.96 dry weight. Furthermore, the averaged leaf dry weight ratio is `r mean(csv.moisture$ratio[csv.moisture$PartType == 'Leaves']) %>% round(3)` while the averaged root dry weight ratio is `r mean(csv.moisture$ratio[csv.moisture$PartType == 'Roots']) %>% round(3)`. Given their closeness, a global average ratio of `r averaged.moisture %>% round(3)` was elected to be generalised across all samples. 
+
+```{r dryweightcorrection}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.cap: Boxplot showing the ratio of dry weight to the total weight of select samples used for the carbon measurement. In spite of keeping the samples in an enclosed container with anhydrous beads, there is still some introduction of atmospheric moisture to the homogeneous sample.  
+
+## defining common axes labels
+.site <- ''
+.ratio <- 'Ratio of dry weight to total weight (mg/mg)'
+
+ggplot(csv.moisture, aes(x = Group, y = ratio, fill = PartType, colour = PartType)) + 
+  geom_boxplot() +
+  geom_point(aes(colour = PartType), position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
+  scale_fill_manual('Biomass', values = c('Leaves' = 'darkgreen', 'Roots' = 'brown4')) +
+  scale_colour_manual('Biomass', values = c('Leaves' = 'green3', 'Roots' = 'brown2')) +
+  xlab(.site) + ylab(.ratio)
+```
+
 ```{r results_preprocessing}
 #| echo: false
 #| error: false
@@ -323,12 +368,10 @@ csv.carbon <- rbind(csv.carbon.AV, csv.carbon.BB, csv.carbon.CB)
   csv.carbon$CarbonIC <- as.numeric(csv.carbon$CarbonIC)/1000
   csv.carbon$Group <- factor(csv.carbon$Group, levels = c('Natural', 'Rewilded', 'spc_0', 'spc_50', 'spc_100', 'Low', 'High'), labels = c('Natural\n(Aveiro)', 'Rewilded\n(Aveiro)', '0%\nseagrass\ncover\n(Cadiz)', '50%\nseagrass\ncover\n(Cadiz)', '100%\nseagrass\ncover\n(Cadiz)', 'Low\n(Bourgneuf\nBay)', 'High\n(Bourgneuf\nBay)'))
 
-## to work on the dry weight correction: does not affect content values; affects stock values  
-  
 csv.carbon <- csv.carbon %>% 
   filter(!is.na(DryMassTotal)) %>%
   mutate(# sample dry weight correction (simple version; not separated by site)
-         DryMassIC = DryMassIC*0.9,
+         DryMassIC = DryMassIC*averaged.moisture,
          # carbon content
          TC_gG = CarbonTC/DryMassTC, TIC_gG = CarbonIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
          # core is 15 cm in diameter; conversion to per unit area (m2)
@@ -348,7 +391,6 @@ csv.carbon <- csv.carbon.ratio %>%
 ## defining common axes labels
 .dwPerArea <- bquote('Total Dry Weight per unit area'~(g/m^2))
 .CconcPerDW <- 'Carbon content (% of Carbon g per Dry Weight g)'
-.site <- ''
 .AgbBgbRatio <- bquote('AGB/BGB Ratio')
 ```
 
