@@ -378,7 +378,6 @@ csv.carbon <- csv.carbon %>%
          DryMassTotalPerM2 = DryMassTotal/(pi*(0.15/2)^2))
   # csv.carbon$TOC_gG[is.na(csv.carbon$TOC_gG)] <- 0 ## causes problems for boxplot for the rewilded sites; better to remove them
 
-
 csv.carbon.ratio <- csv.carbon %>%
   select(c(ID, PartType, DryMassTotalPerM2, Site, Group)) %>%
   pivot_wider(names_from = PartType, values_from = DryMassTotalPerM2) %>%
@@ -436,7 +435,55 @@ ggplot(csv.carbon.ratio %>% filter(!is.infinite(AgbBgbRatio)), aes(x = Group, y 
 
 When classified based on the different station conditions and plotted onto a box plot, it is observed that the leaf carbon content seems to be more in the rewilded site, while the root carbon content seems to be less (Figure \@ref(fig:carboncontentBoxplot)). Similarly, in Cadiz Bay, the carbon content of both the leaves and roots of stations with 100% seagrass cover is more than those from stations with only about 50% seagrass cover. 
 
-This analysis is pending the completion of data measurement, before a statistical test(s) can be applied. 
+```{r carboncontentStats}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+csv.carbon.filt.AV <- csv.carbon %>%
+  filter(Group == "Natural\n(Aveiro)" | Group == "Rewilded\n(Aveiro)") %>% 
+  filter(!ID %in% c('NG 18','RG 3'))
+
+test.f.AV.agc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Leaves") %>%
+  var.test(TOC_gG ~ Group, data = .)
+
+test.t.AV.agc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Leaves") %>%
+  t.test(TOC_gG ~ Group, data = .)
+
+test.f.AV.bgc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Roots") %>%
+  var.test(TOC_gG ~ Group, data = .)
+
+test.t.AV.bgc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Roots") %>%
+  t.test(TOC_gG ~ Group, data = .)
+
+csv.carbon.filt.CB <- csv.carbon %>%
+  filter(Group == "0%\nseagrass\ncover\n(Cadiz)" | Group == "50%\nseagrass\ncover\n(Cadiz)" | Group == "100%\nseagrass\ncover\n(Cadiz)") 
+
+test.f.CB.agc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Leaves") %>%
+  var.test(TOC_gG ~ Group, data = .)
+
+test.t.CB.agc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Leaves") %>%
+  t.test(TOC_gG ~ Group, data = .)
+
+test.f.CB.bgc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Roots") %>%
+  var.test(TOC_gG ~ Group, data = .)
+
+test.t.CB.bgc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Roots") %>%
+  t.test(TOC_gG ~ Group, data = .)
+```
+
+The F-test shows an equal variance in leaf carbon content between the natural and rewilded sites of Ria de Aveiro (p-value = `r format(test.f.AV.agc$p.value, digits = 3)`), but an unequal variance in the roots and rhizomes carbon content (p-value = `r format(test.f.AV.bgc$p.value, digits = 3)`). Thus, a Student's t-test was performed for the leaf carbon content comparison while a Welch's t-Test was performed for the roots and rhizomes carbon content comparison. There is a significant difference in carbon content between the natural and rewilded seagrass for both the leaf (p-value = `r format(test.t.AV.agc$p.value, digits = 3)`, difference in mean = `r test.t.AV.agc$estimate %>% diff() %>% abs() %>% "[["(1) %>% format(digits = 3)`) and roots and rhizomes (p-value = `r format(test.t.AV.bgc$p.value, digits = 3)`, difference in mean = `r test.t.AV.bgc$estimate %>% diff() %>% abs() %>% "[["(1) %>% format(digits = 3)`).
+
+Similarly, for Cadiz Bay, the F-test shows an equal variance in carbon content between the 50% and 100% seagrass cover sites for the roots and rhizomes (p-value = `r format(test.f.CB.bgc$p.value, digits = 3)`), but not for the leaves (p-value = `r format(test.f.CB.agc$p.value, digits = 3)`). There is a significant difference in carbon content between the 50% and 100% cover meadows for both the leaf (p-value = `r format(test.t.CB.agc$p.value, digits = 3)`, difference in mean = `r test.t.CB.agc$estimate %>% diff() %>% abs() %>% "[["(1) %>% format(digits = 3)`) and roots and rhizomes (p-value = `r format(test.t.CB.bgc$p.value, digits = 3)`, difference in mean = `r test.t.CB.bgc$estimate %>% diff() %>% abs() %>% "[["(1) %>% format(digits = 3)`).
 
 ```{r carboncontentBoxplot}
 #| echo: false
@@ -491,6 +538,52 @@ The seagrass carbon stock seemed similar between the natural and rewilded sites 
 csv.carbon$TOC_stock <- csv.carbon$TOC_gG * csv.carbon$DryMassTotalPerM2
 
 .CPerArea <- bquote('Carbon stock'~(g/m^2))
+```
+
+```{r carbonstockStats}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+csv.carbon.filt.AV <- csv.carbon %>%
+  filter(Group == "Natural\n(Aveiro)" | Group == "Rewilded\n(Aveiro)") %>% 
+  filter(!ID %in% c('NG 18','RG 3'))
+
+test.f.AV.agc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Leaves") %>%
+  var.test(TOC_stock ~ Group, data = .)
+
+test.t.AV.agc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Leaves") %>%
+  t.test(TOC_stock ~ Group, data = .)
+
+test.f.AV.bgc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Roots") %>%
+  var.test(TOC_stock ~ Group, data = .)
+
+test.t.AV.bgc <- csv.carbon.filt.AV %>%
+  filter(PartType == "Roots") %>%
+  t.test(TOC_stock ~ Group, data = .)
+
+csv.carbon.filt.CB <- csv.carbon %>%
+  filter(Group == "0%\nseagrass\ncover\n(Cadiz)" | Group == "50%\nseagrass\ncover\n(Cadiz)" | Group == "100%\nseagrass\ncover\n(Cadiz)") 
+
+test.f.CB.agc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Leaves") %>%
+  var.test(TOC_stock ~ Group, data = .)
+
+test.t.CB.agc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Leaves") %>%
+  t.test(TOC_stock ~ Group, data = .)
+
+test.f.CB.bgc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Roots") %>%
+  var.test(TOC_stock ~ Group, data = .)
+
+test.t.CB.bgc <- csv.carbon.filt.CB %>%
+  filter(PartType == "Roots") %>%
+  t.test(TOC_stock ~ Group, data = .)
 ```
 
 ```{r carbonstockBoxplot}
