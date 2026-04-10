@@ -628,6 +628,96 @@ ggplot(csv.carbon %>% filter(!Label %in% c('Cadiz_2025_L_02','Cadiz_2025_L_03'))
 <!-- #   ) -->
 <!-- # ``` -->
 
+```{r soilpreprocessing}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+csv.soil.AV <- read_xlsx('data/carbon/Aveiro2025_Biomass_C_cores.xlsx', sheet = 'soil')
+  csv.soil.AV$Site <- "Ria de Aveiro"
+# csv.soil.BB <- read_xlsx('data/carbon/Bourgneuf2025_Biomass_C_cores.xlsx', sheet = 'soil')
+#   csv.soil.BB$Site <- "Bourgneuf Bay"
+# csv.soil.CB <- read_xlsx('data/carbon/Cadiz2025_Biomass_C_cores.xlsx', sheet = 'soil')
+#   csv.soil.CB$Site <- "Cadiz Bay"
+
+# csv.soil <- rbind(csv.soil.AV, csv.soil.BB, csv.soil.CB) 
+csv.soil <- csv.soil.AV
+  ## all units are in mg and will be kept so, for the final output is a unitless ratio
+  # csv.moisture$Group <- factor(csv.moisture$Group, levels = c('Natural', 'Rewilded', 'spc_50', 'spc_100', 'High'), labels = c('Natural\n(Aveiro)', 'Rewilded\n(Aveiro)', '50%\nseagrass\ncover\n(Cadiz)', '100%\nseagrass\ncover\n(Cadiz)', 'High\n(Bourgneuf\nBay)'))
+
+area.corer <- 10
+
+csv.soil <- csv.soil %>%
+  mutate(Group = ifelse(grepl('RS', Sample), 'Rewilded', ifelse(grepl('NS', Sample), 'Natural', 'NA')),
+         # carbon content
+         TC_gG = CarbonTC/DryMassTC, TIC_gG = CarbonIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
+         # core is 15 cm in diameter; conversion to per unit area (m2)
+         DryMassTotalPerM2 = DryMassTotal/(area.corer))
+
+averaged.dbd <- mean(csv.soil$DryBulkDensity)
+```
+
+```{r soildrybulkdensityStats}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+test.f.AV.dbd <- csv.soil %>%
+  var.test(DryBulkDensity ~ Group, data = .)
+
+test.t.AV.dbd <- csv.soil %>%
+  t.test(DryBulkDensity ~ Group, data = .)
+```
+
+The soil dry bulk density variances of the rewilded and natural sites at Aveiro do not have a similar variance (p-value = `r format(test.f.AV.dbd$p.value, digits = 3)`). Based on the Welch's t-Test, there were no significant differences between the dry bulk densities at both sites (p-value = `r format(test.t.AV.dbd$p.value, digits = 3)`).
+
+```{r soildrybulkdensityBoxplot}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.align: 'center'
+#| fig.cap: Boxplot showing the soil dry bulk density (g/cm3) of the cores across different conditions. 
+
+.DryBulkDensity <- bquote('Dry Bulk Density (g/cm^3)')
+
+ggplot(csv.soil, aes(x = Group, y = DryBulkDensity)) + 
+  geom_boxplot() +
+  geom_point(position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
+  xlab(.site) + ylab(.DryBulkDensity) 
+```
+
+```{r soilcarbonStats}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+
+test.f.AV.soilC <- csv.soil %>%
+  var.test(TOC_gG ~ Group, data = .)
+
+test.t.AV.soilC <- csv.soil %>%
+  t.test(TOC_gG ~ Group, data = .)
+```
+
+The soil carbon content variances of the rewilded and natural sites at Aveiro have a similar variance (p-value = `r format(test.f.AV.soilC$p.value, digits = 3)`), and there were no significant differences between their carbon content across both sites (p-value = `r format(test.t.AV.soilC$p.value, digits = 3)`).
+
+```{r soilcarbonBoxplot}
+#| echo: false
+#| error: false
+#| message: false
+#| warning: false
+#| fig.align: 'center'
+#| fig.cap: Boxplot showing the percent carbon content (C g per dry weight g) of the cores across different conditions. 
+
+ggplot(csv.soil, aes(x = Group, y = TOC_gG*100)) + 
+  geom_boxplot() +
+  geom_point(position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
+  xlab(.site) + ylab(.CconcPerDW) 
+```
+
 ## Spatial upscaling
 
 This section will be updated when the mapping work is completed.
