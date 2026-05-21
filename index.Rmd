@@ -646,14 +646,17 @@ csv.soil <- csv.soil.AV
   ## all units are in mg and will be kept so, for the final output is a unitless ratio
   # csv.moisture$Group <- factor(csv.moisture$Group, levels = c('Natural', 'Rewilded', 'spc_50', 'spc_100', 'High'), labels = c('Natural\n(Aveiro)', 'Rewilded\n(Aveiro)', '50%\nseagrass\ncover\n(Cadiz)', '100%\nseagrass\ncover\n(Cadiz)', 'High\n(Bourgneuf\nBay)'))
 
-area.corer <- 10
+coredepth <- 100 # 1m core
 
 csv.soil <- csv.soil %>%
   mutate(Group = ifelse(grepl('RS', Sample), 'Rewilded', ifelse(grepl('NS', Sample), 'Natural', 'NA')),
          # carbon content
          TC_gG = CarbonTC/DryMassTC, TIC_gG = CarbonIC/DryMassIC, TOC_gG = TC_gG - TIC_gG, 
-         # core is 15 cm in diameter; conversion to per unit area (m2)
-         DryMassTotalPerM2 = DryMassTotal/(area.corer))
+         # soil carbon density
+         SoilCDensity = DryBulkDensity * TOC_gG,
+         # conversion of soil carbon density (g/cm3) involves multliplying by depth to remove one cm1, and then unit conversion between cm2 and unit area (m2)
+         DryMassTotalPerM2 = SoilCDensity * coredepth * 100
+         )
 
 averaged.dbd <- mean(csv.soil$DryBulkDensity)
 ```
@@ -712,7 +715,7 @@ The soil carbon content variances of the rewilded and natural sites at Aveiro ha
 #| fig.align: 'center'
 #| fig.cap: Boxplot showing the percent carbon content (C g per dry weight g) of the cores across different conditions. 
 
-ggplot(csv.soil, aes(x = Group, y = TOC_gG*100)) + 
+ggplot(csv.soil %>% filter(Sample != "RS03"), aes(x = Group, y = TOC_gG*100)) + 
   geom_boxplot() +
   geom_point(position = position_jitterdodge(jitter.width = 0.4), show.legend = FALSE) +
   xlab(.site) + ylab(.CconcPerDW) 
