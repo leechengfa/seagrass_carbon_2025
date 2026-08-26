@@ -288,6 +288,7 @@ Organic\,carbon\,stock\,(g\,C\,m^{-2}) = \frac{TOC \times Total\,sample\,dry\,we
 Core\,area\,(m^2) = \pi \times (\frac{0.15}{2})^2 (\#eq:corearea)
 \end{equation}
 
+
 ## Spatial upscaling
 
 This section will be updated when the mapping work is completed.
@@ -296,7 +297,13 @@ Total seagrass carbon stock will be derived by applying the seagrass carbon stoc
 
 ## Uncertainty
 
-This section will be updated when the work is completed.
+The uncertainty in the prediction of the seagrass extent is calculated by first taking the image-level median of the per pixel seagrass class probability, then inverting it by subtracting 1 with it, and finally multiplying together with the global model accuracy and the predicted seagrass extent [@davies2026].
+
+\begin{equation}
+\tau = A \times G_{a} \times (1 - \overline{\sum p}) (\#eq:tauuncertainty)
+\end{equation}
+
+This section will continue to be updated as the work progresses.
 
 
 # Results
